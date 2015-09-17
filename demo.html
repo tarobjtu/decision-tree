@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Decision Tree wi</title>
+    <link rel="stylesheet" href="src/main.css"/>
+</head>
+<body>
+<div id="body"></div>
+<script src="lib/d3.js"></script>
+<script src="src/decision-tree.js"></script>
+<script type="text/javascript">
+    d3.json("data/iris.json", renderTree);
+    function renderTree(json){
+        decisionTree.init(json);
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+.node {
+    cursor: pointer;
+}
+.node.leaf{
+    cursor: auto;
+}
+.node rect {
+    stroke-width: 2px;
+    stroke: #999;
+    stroke-dasharray: 4,2;
+    rx: 8px;
+    ry: 8px;
+}
+.node.leaf rect{
+    fill: #7f9e07;
+    stroke: #7f9e07;
+    stroke-width: 2px;
+    stroke-dasharray: initial;
+}
+
+.node text {
+    font-size: 12px;
+    fill: #fff;
+}
+
+path.link {
+    fill: none;
+    stroke: #ccc;
+    transition: .2s ease-in-out;
+}
+
+path.link.hover,
+.node.hover rect{
+    stroke: #333;
+}
