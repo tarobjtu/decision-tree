@@ -38,7 +38,7 @@ Decision Tree data like [iris.json](https://raw.githubusercontent.com/tarobjtu/d
 ![Capture](https://raw.githubusercontent.com/tarobjtu/decision-tree/master/images/decision_tree_with_prediction_path.gif)
 
 ## Demo
-Please View [Demo here](http://tarobjtu.github.io/dv/decision-tree/demo.html)
+Please View [Demo here](http://tarobjtu.github.io/decision-tree/demo.html)
 
 ## Thanks
 Thanks to [pprett's demo](http://bl.ocks.org/pprett/3813537) and D3.js.
