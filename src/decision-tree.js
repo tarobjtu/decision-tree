@@ -2,21 +2,33 @@
 
     global.decisionTree = {};
 
-    var m = [20, 120, 20, 120],
-        w = 1280 - m[1] - m[3],
-        h = 800 - m[0] - m[2],
-        i = 0,
-        rect_width = 90,
-        rect_height = 26,
-        max_link_width = 20,
-        min_link_width = 1.5,
-        char_to_pxl = 6,
-        root;
+    var opt = {
+        margin : {
+            top : 20,
+            right : 20,
+            bottom : 20,
+            left : 20
+        },
+        width : 800,
+        height : 1800,
+        node : {
+            width : 90,
+            height : 26
+        },
+        link : {
+            maxWidth : 15,
+            minWidth : 2
+        },
+        char_to_pxl : 6,
+        depth : 70
+    };
 
-    var vis, tree;
+    var container, vis, tree, root, i = 0, showPredictionPanel;
 
     var classNames = {
-        hover : 'hover'
+        decisionTree : 'decision-tree',
+        hover : 'hover',
+        predictionPanel : "prediction-panel"
     };
 
     var diagonal = d3.svg.diagonal()
@@ -26,22 +38,34 @@
     var color_map = d3.scale.category10();
 
 
-    decisionTree.init = function(json){
-        vis = d3.select("#body").append("svg:svg")
-            .attr("width", w + m[1] + m[3])
-            .attr("height", h + m[0] + m[2] + 1000)
+    decisionTree.init = function(options){
+        var width = opt.width + opt.margin.right + opt.margin.left,
+            height = opt.height + opt.margin.top + opt.margin.bottom;
+
+        container = d3.select(options.container);
+        showPredictionPanel = options.showPredictionPanel;
+        vis = container.style("position", "relative")
+            .append("svg:svg")
+            .attr("width", width)
+            .attr("height", height)
+            .attr("class", classNames.decisionTree)
             .append("svg:g")
-            .attr("transform", "translate(" + m[3] + "," + m[0] + ")")
-            .attr("data-role", "decision-tree");
+            .attr("transform", "translate(" + opt.margin.left + "," + opt.margin.top + ")");
+
+        if(showPredictionPanel){
+            container.append("div")
+                .attr("class", classNames.predictionPanel)
+                .style("left", width + "px" );
+        }
 
         tree = d3.layout.tree()
-            .size([h, w]);
+            .size([opt.width, opt.height]);
 
-        load_dataset(json);
+        render(options.data);
     };
 
-    function load_dataset(json) {
-        root = json;
+    function render(data) {
+        root = data;
         root.x0 = 0;
         root.y0 = 0;
 
@@ -50,7 +74,7 @@
 
         link_stoke_scale = d3.scale.linear()
             .domain([0, n_samples])
-            .range([min_link_width, max_link_width]);
+            .range([opt.link.minWidth, opt.link.maxWidth]);
 
         function toggleAll(d) {
             if (d && d.children) {
@@ -59,20 +83,19 @@
             }
         }
 
-        // Initialize the display to show a few nodes.
         root.children.forEach(toggleAll);
 
         update(root);
     }
 
     function update(source) {
-        var duration = d3.event && d3.event.altKey ? 5000 : 500;
+        var duration = 500;
 
-        // Compute the new tree layout.
         var nodes = tree.nodes(root).reverse();
 
-        // Normalize for fixed-depth.
-        nodes.forEach(function(d) { d.y = d.depth * 100; });
+        nodes.forEach(function(d) {
+            d.y = d.depth * opt.depth;
+        });
 
         // Update the nodes…
         var node = vis.selectAll("g.node")
@@ -91,17 +114,25 @@
                 update(d);
             })
             .on("mouseover", function(d){
-                markRoute(d);
-            })
-            .on("mouseout", function(d){
-                clearMarkRout(d);
+                // clear
+                clearMarkPath(d);
+                if(showPredictionPanel) {
+                    clearPredictionPanel();
+                }
+
+                // mark
+                var list = getRoute(d);
+                markPath(list);
+                if(showPredictionPanel) {
+                    predictionPanel(list);
+                }
             });
 
         nodeEnter.append("svg:rect")
             .attr("x", function(d) {
                 var label = node_label(d);
-                var text_len = label.length * char_to_pxl;
-                var width = d3.max([rect_width, text_len])
+                var text_len = label.length * opt.char_to_pxl;
+                var width = d3.max([opt.node.width, text_len])
                 return -width / 2;
             })
             .attr("width", 1e-6)
@@ -109,7 +140,12 @@
             .attr("rx", function(d) { return d.type === "split" ? 2 : 0;})
             .attr("ry", function(d) { return d.type === "split" ? 2 : 0;})
             .style("fill", function(d) {
-                return d.type === "split" ? color_map(d.feature) : '';
+                var color = '';
+                if(d.type === "split"){
+                    // cached for node color of prediction path
+                    color = d.color = color_map(d.feature);
+                }
+                return color;
             });
 
         nodeEnter.append("svg:text")
@@ -126,11 +162,11 @@
         nodeUpdate.select("rect")
             .attr("width", function(d) {
                 var label = node_label(d);
-                var text_len = label.length * char_to_pxl;
-                var width = d3.max([rect_width, text_len])
+                var text_len = label.length * opt.char_to_pxl;
+                var width = d3.max([opt.node.width, text_len])
                 return width;
             })
-            .attr("height", rect_height);
+            .attr("height", opt.node.height);
 
         nodeUpdate.select("text")
             .style("fill-opacity", 1);
@@ -220,19 +256,20 @@
         }
     }
 
-    function markRoute(d){
-        var list = ids(d);
+    function markPath(list){
         vis.selectAll('[data-id]')
             .each(function(d){
                 var node = d3.select(this);
                 var id = parseInt(node.attr('data-id'), 10);
-                if(list.indexOf(id) >= 0){
-                    node.classed(classNames.hover, true);
-                }
+                list.forEach(function(item){
+                    if(item.id === id){
+                        node.classed(classNames.hover, true);
+                    }
+                });
             });
     }
 
-    function clearMarkRout(d){
+    function clearMarkPath(d){
         vis.selectAll('[data-id]')
             .each(function(d){
                 d3.select(this).classed(classNames.hover, false);
@@ -240,17 +277,39 @@
     }
 
 
-    function ids(d){
+    function getRoute(d){
         var rst = [];
 
         function get(d){
             if(d.parent){
                 get(d.parent)
             }
-            rst.push(d.id);
+            rst.push(d);
         }
         get(d);
         return rst;
+    }
+
+    /**
+     * @description: To render prediction path
+     * @param list
+     */
+    var tmpl = '<div class="title">Prediction path</div>' +
+               '<% _.forEach(list, function(item) { %>' +
+               '<div class="feature" style="background-color: <%- item.color %>"><%- item.feature %></div>' +
+               '<div class="fork"><%- item.label %></div>' +
+               '<% }); %>' +
+               '<div class="feature" style="background-color: <%- last.color %>"><%- last.feature || lastLabel %></div>';
+
+    function predictionPanel(list){
+        var last = list.pop();
+        var html = _.template(tmpl)({list : list, last : last, lastLabel : node_label(last)});
+        container.select('.' + classNames.predictionPanel)
+            .html(html);
+    }
+    function clearPredictionPanel(){
+        container.select('.' + classNames.predictionPanel)
+            .html('');
     }
 
 

@@ -4,15 +4,25 @@
     <meta charset="UTF-8">
     <title>Decision Tree wi</title>
     <link rel="stylesheet" href="src/main.css"/>
+    <style>
+        body{
+            font-family: Helvetica, Verdana, sans-serif;
+        }
+    </style>
 </head>
 <body>
-<div id="body"></div>
+<div class="svg-container"></div>
 <script src="lib/d3.js"></script>
+<script src="lib/lodash.js"></script>
 <script src="src/decision-tree.js"></script>
 <script type="text/javascript">
     d3.json("data/iris.json", renderTree);
     function renderTree(json){
-        decisionTree.init(json);
+        decisionTree.init({
+            container : '.svg-container',
+            data : json,
+            showPredictionPanel : true
+        });
     }
 </script>
 </body>
